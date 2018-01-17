@@ -11,24 +11,21 @@ module Spree
       rescue_from Exception, :with => :exception_handler
 
       def consume
-        handler = Handler::Base.build_handler(@called_hook, @webhook_body)
-        responder = handler.process
+        responder = @handler.process
         render_responder(responder)
       end
 
       protected
       def authorize
         unless request.headers['HTTP_X_HUB_TOKEN'] == Spree::Wombat::Config[:connection_token]
-          base_handler = Handler::Base.new(@webhook_body)
-          responder = base_handler.response('Unauthorized!', 401)
+          responder = @handler.response('Unauthorized!', 401)
           render_responder(responder)
           return false
         end
       end
 
       def exception_handler(exception)
-        base_handler = Handler::Base.new(@webhook_body)
-        responder = base_handler.response(exception.message, 500, nil, exception)
+        responder = @handler.response(exception.message, 500, nil, exception)
         render_responder(responder)
         return false
       end
@@ -36,6 +33,7 @@ module Spree
       def save_request_data
         @called_hook = params[:path]
         @webhook_body = request.body.read
+        @handler = Handler::Base.build_handler(@called_hook, @webhook_body)
       end
 
       def render_responder(responder)
